@@ -173,7 +173,15 @@ defmodule BroadwayRabbitMQ.AmqpClient do
         arguments: [type: :any]
       ]
     ],
-    broadway: [type: :any, doc: false]
+    broadway: [type: :any, doc: false],
+    ssl_options: [
+      type: :any,
+      required: false,
+      doc: """
+      Defined the SSL settings for the connection with RabbitMQ.
+      Check `AMQP.Connection.open/2` for the full list of SSL options.
+      """
+    ]
   ]
 
   @doc false
@@ -194,7 +202,8 @@ defmodule BroadwayRabbitMQ.AmqpClient do
          qos: Keyword.fetch!(opts, :qos),
          metadata: Keyword.fetch!(opts, :metadata),
          consume_options: Keyword.fetch!(opts, :consume_options),
-         after_connect: Keyword.get(opts, :after_connect, fn _channel -> :ok end)
+         after_connect: Keyword.get(opts, :after_connect, fn _channel -> :ok end),
+         ssl_options: Keyword.get(opts, :ssl_options)
        }}
     else
       {:error, %NimbleOptions.ValidationError{} = error} -> {:error, Exception.message(error)}
@@ -299,6 +308,16 @@ defmodule BroadwayRabbitMQ.AmqpClient do
     Channel.close(channel)
     Process.unlink(channel.conn.pid)
     Connection.close(channel.conn)
+  end
+
+  defp open_connection_instrumented(%{connection: connection} = config) when is_binary(connection) do
+    {name, config} = Map.pop(config, :name, :undefined)
+    {ssl_options, config} = Map.pop(config, :ssl_options, [])
+    telemetry_meta = %{connection: config.connection, connection_name: name}
+
+    :telemetry.span([:broadway_rabbitmq, :amqp, :open_connection], telemetry_meta, fn ->
+      {Connection.open(config.connection, name: name, ssl_options: ssl_options), telemetry_meta}
+    end)
   end
 
   defp open_connection_instrumented(config) do

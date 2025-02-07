@@ -67,7 +67,8 @@ defmodule BroadwayRabbitMQ.AmqpClientTest do
                   declare_opts: nil,
                   queue: "queue",
                   after_connect: after_connect,
-                  consume_options: [no_ack: true, exclusive: false]
+                  consume_options: [no_ack: true, exclusive: false],
+                  ssl_options: nil
                 }}
     end
 
