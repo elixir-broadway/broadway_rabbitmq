@@ -377,13 +377,14 @@ defmodule BroadwayRabbitMQ.Producer do
   ## Dead-letter Exchanges
 
   Dead-letter exchanges are normal RabbitMQ exchanges designated for receiving messages
-  that have been rejected elsewhere.  You can reference a dead-letter exchange when
+  that have been rejected elsewhere. You can reference a dead-letter exchange when
   defining a queue by supplying a `"x-dead-letter-exchange"` argument and optionally a
-  `"x-dead-letter-routing-key"`. When a queue has a dead-letter exchange defined, then
-  failing a message with `Broadway.Message.failed/2` or raising an exception in `c:Broadway.handle_message/3`
-  causes the message to be republished to the exchange named in the `"x-dead-letter-exchange"`
-  argument. The message's original routing key is kept unless the `"x-dead-letter-routing-key"`
-  argument specifies an override.
+  `"x-dead-letter-routing-key"`. With `on_failure: :reject`, failing a message with
+  `Broadway.Message.failed/2` or raising an exception in `c:Broadway.handle_message/3`
+  causes Broadway to reject the message without requeueing it. RabbitMQ then republishes
+  it to the exchange named in the `"x-dead-letter-exchange"` argument. The message's
+  original routing key is kept unless the `"x-dead-letter-routing-key"` argument specifies
+  an override.
 
   A bit more care is needed during setup when using dead-letter exchanges because the dead-letter
   exchange must be declared and exist *before* you attempt to reference it when declaring a queue.
