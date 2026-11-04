@@ -335,6 +335,11 @@ defmodule BroadwayRabbitMQ.AmqpClientTest do
       AMQP.Connection.close(channel.conn)
     end
 
+    test "returns an auth failure when the broker refuses the login" do
+      {:ok, config} = AmqpClient.init(queue: "queue", connection: [password: "wrong"])
+      assert {:error, {:auth_failure, _message}} = AmqpClient.setup_channel(config)
+    end
+
     @tag :capture_log
     test "raises if :after_connect returns a bad value" do
       {:ok, config} =

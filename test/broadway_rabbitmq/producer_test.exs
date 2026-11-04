@@ -675,6 +675,40 @@ defmodule BroadwayRabbitMQ.ProducerTest do
                log =~ "Cannot connect to RabbitMQ broker: {:auth_failure, ~c\"Disconnected\"}"
     end
 
+    test "with auth_failure from a refused login" do
+      message = ~c"ACCESS_REFUSED - Login was refused using authentication mechanism PLAIN."
+
+      log =
+        capture_log(fn ->
+          broadway = start_broadway(connect_responses: [{:auth_failure, message}, :ok])
+          assert_receive {:setup_channel, :error, _}
+          assert get_backoff_timeout(broadway) == 10
+          assert_receive {:setup_channel, :ok, _}
+          stop_broadway(broadway)
+        end)
+
+      assert log =~ "Cannot connect to RabbitMQ broker: {:auth_failure,"
+      refute log =~ "Crashing"
+    end
+
+    for reason <- [:timeout, :ehostunreach, :enetunreach] do
+      test "with #{reason}" do
+        reason = unquote(reason)
+
+        log =
+          capture_log(fn ->
+            broadway = start_broadway(connect_responses: [reason, :ok])
+            assert_receive {:setup_channel, :error, _}
+            assert get_backoff_timeout(broadway) == 10
+            assert_receive {:setup_channel, :ok, _}
+            stop_broadway(broadway)
+          end)
+
+        assert log =~ "Cannot connect to RabbitMQ broker: #{inspect(reason)}"
+        refute log =~ "Crashing"
+      end
+    end
+
     test "with socket_closed_unexpectedly" do
       assert capture_log(fn ->
                broadway =
